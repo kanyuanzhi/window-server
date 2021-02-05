@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"userServer/model"
-	"userServer/testData"
 	"userServer/util"
 )
 
@@ -34,10 +33,14 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 func UserInfo(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
-	userInfo := testData.TokenMap1[token]
-
-	log.Println(userInfo)
-	w.Write([]byte("{\"code\":20000,\"data\":{\"token\":\"admin-token\"}}"))
+	var response interface{}
+	if ok, userInfo := util.GetUserInfo(token); ok {
+		response = model.UserInfoResponse{Code: 20000, Data: userInfo}
+	} else {
+		response = model.ErrorResponse{Code: 50008, Message: "Login failed, unable to get user details."}
+	}
+	responseByte, _ := json.Marshal(response)
+	w.Write(responseByte)
 }
 
 func UserLogout(w http.ResponseWriter, r *http.Request) {
@@ -106,3 +109,31 @@ func UserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 	responseByte, _ := json.Marshal(response)
 	w.Write(responseByte)
 }
+
+func FetchUsers(w http.ResponseWriter, r *http.Request) {
+	usersBriefInfo := util.GetUsersBriefInfo()
+	var response interface{}
+	response = model.UsersInfoResponse{Code: 20000, Data: usersBriefInfo}
+	responseByte, _ := json.Marshal(response)
+	w.Write(responseByte)
+}
+
+func UpdateUserRoles(w http.ResponseWriter, r *http.Request){
+	result, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	userBriefInfo := model.UserBriefInfoDB{}
+	err = json.Unmarshal(result, &userBriefInfo)
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	var response interface{}
+	if ok := util.UpdateUserRoles(userBriefInfo); ok {
+		response = model.UpdateUserRolesResponse{Code: 20000, Data: "修改权限成功"}
+	} else {
+		response = model.ErrorResponse{Code: 60204, Message: "修改权限失败"}
+	}
+	responseByte, _ := json.Marshal(response)
+	w.Write(responseByte)}

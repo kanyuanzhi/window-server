@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 	"log"
@@ -74,11 +75,21 @@ func Register(userRegister model.UserRegister) bool {
 	encodePassword := string(hash)
 
 	// 生成token：用户名+注册时间
-	tokenStr := userRegister.Username + strconv.FormatInt(time.Now().Unix(),10)
+	tokenStr := userRegister.Username + strconv.FormatInt(time.Now().Unix(), 10)
 	token := MD5Str(tokenStr)
 
-	userAuthenticationDB := model.UserAuthenticationDB{Username: userRegister.Username, Password: encodePassword,Token: token}
+	userAuthenticationDB := model.UserAuthenticationDB{Username: userRegister.Username, Password: encodePassword, Token: token}
 	InsertOne("UserAuthentication", userAuthenticationDB)
+
+	userInfoDB := model.UserInfoDB{
+		Token:        token,
+		Roles:        []string{"guest"},
+		Introduction: "",
+		Username:     userRegister.Username,
+		Name:         "姓名",
+		Avatar:       "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif",
+	}
+	InsertOne("UserInfo", userInfoDB)
 	return true
 }
 
@@ -93,4 +104,37 @@ func CheckUsername(username string) bool {
 		return true
 	}
 	return false
+}
+
+func GetUserInfo(token string) (bool, model.UserInfoDB) {
+	filter := bson.D{{"token", token}}
+	singleResult := FindOne("UserInfo", filter)
+	userInfo := model.UserInfoDB{}
+	err := singleResult.Decode(&userInfo)
+	if err != nil {
+		log.Println(err.Error())
+		return false, userInfo
+	}
+	return true, userInfo
+}
+
+func GetUsersBriefInfo() []model.UserBriefInfoDB {
+	var usersBriefInfo []model.UserBriefInfoDB
+	cursor := FindAll("UserInfo", bson.D{}, nil)
+	err := cursor.All(context.TODO(), &usersBriefInfo)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = cursor.Close(context.TODO())
+	if err != nil {
+		log.Println(err.Error())
+	}
+	return usersBriefInfo
+}
+
+func UpdateUserRoles(userBriefInfo model.UserBriefInfoDB) bool {
+	filter := bson.D{{"username", userBriefInfo.Username}}
+	update := bson.D{{"$set", bson.D{{"roles", userBriefInfo.Roles}}}}
+	UpdateOne("UserInfo", filter, update)
+	return true
 }

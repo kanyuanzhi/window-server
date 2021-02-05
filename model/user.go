@@ -29,18 +29,18 @@ type UserUpdatePassword struct {
 	ConfirmNewPassword string `json:"confirm_new_password"`
 }
 
-type UserInfo struct {
+type UserInfoDB struct {
+	Token        string   `json:"token"`
+	Roles        []string `json:"roles"` // guest(default),operator,admin,super
+	Introduction string   `json:"introduction"`
+	Username     string   `json:"username"`
+	Name         string   `json:"name"`
+	Avatar       string   `json:"avatar"`
+}
+
+type UserBriefInfoDB struct {
 	Roles        []string `json:"roles"`
 	Introduction string   `json:"introduction"`
 	Username     string   `json:"username"`
+	Name         string   `json:"name"`
 }
-
-func NewUserInfo(roles []string, introduction string, username string) *UserInfo {
-	return &UserInfo{
-		Roles:        roles,
-		Introduction: introduction,
-		Username:     username,
-	}
-}
-
-type TokenMap map[string]UserInfo
